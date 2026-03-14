@@ -7,8 +7,9 @@
 .player-hero-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 18px;
+  gap: 20px;
+  padding: 30px;
+  margin-bottom: 20px;
 }
 
 .player-hero-left {
@@ -18,11 +19,12 @@
 }
 
 .player-hero-avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 14px;
+  width: 90px;
+  height: 90px;
+  border-radius: 20px;
   object-fit: cover;
-  border: 1px solid #334155;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
 }
 
 .player-hero-right {
@@ -31,9 +33,13 @@
 }
 
 .player-hero-name {
-  text-align: center;
-  margin-bottom: 10px;
-  font-size: 22px;
+  text-align: left;
+  margin-bottom: 5px;
+  font-size: 28px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .player-hero-meta {
@@ -44,8 +50,8 @@
 
 .player-main-grid {
   display: grid;
-  grid-template-columns: 1.15fr 1fr;
-  gap: 18px;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
 }
 
 .player-bottom-grid {
@@ -154,10 +160,10 @@
   position: absolute;
   inset: 0;
   cursor: pointer;
-  background: #334155;
+  background: rgba(255, 255, 255, 0.05);
   transition: 0.25s ease;
   border-radius: 999px;
-  border: 1px solid #475569;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .slider::before {
@@ -165,32 +171,36 @@
   position: absolute;
   height: 16px;
   width: 16px;
-  left: 3px;
+  left: 2px;
   top: 2px;
-  background: #ffffff;
+  background: #94a3b8;
   transition: 0.25s ease;
   border-radius: 50%;
 }
 
 .switch input:checked + .slider {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #3b82f633;
+  border-color: #3b82f6;
+}
+
+.switch input:checked + .slider::before {
+  background: #3b82f6;
+  transform: translateX(18px);
 }
 
 /* Switches de acción peligrosa (ban) se muestran en rojo */
 .switch-row--danger .switch input:checked + .slider {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
 }
 
-.switch-row--danger span {
-  color: #fca5a5;
+.switch-row--danger .switch input:checked + .slider::before {
+  background: #ef4444;
 }
 
 .player-ban-section {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid #1e293b;
 }
 
 .player-ban-section-title {
@@ -200,16 +210,23 @@
   margin: 0 0 10px 0;
 }
 
-.quick-actions-list { display: flex; flex-direction: column; gap: 10px; }
+.quick-actions-list { display: flex; flex-direction: column; gap: 15px; }
 .quick-action-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .quick-action-label { min-width: 100px; color: #94a3b8; font-size: 13px; }
 .quick-action-coords { font-family: monospace; font-size: 13px; color: #cbd5e1; flex: 1; }
-.tp-select { padding: 6px 10px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 13px; min-width: 140px; }
-.btn-sm { padding: 6px 12px; font-size: 12px; }
-
-.switch input:checked + .slider::before {
-  transform: translateX(18px);
+.tp-select { 
+  padding: 8px 12px; 
+  border-radius: 10px; 
+  border: 1px solid rgba(255,255,255,0.08); 
+  background: rgba(0,0,0,0.2); 
+  color: #fff; 
+  font-size: 14px; 
+  outline: none;
 }
+.tp-select:focus {
+  border-color: #3b82f6;
+}
+.btn-sm { padding: 6px 12px; font-size: 12px; }
 
 .inventory-buttons-row {
   display: flex;

@@ -27,11 +27,10 @@ let serverState = {
     ram: 0,
     cpu: 0,
     startTime: null,
-    players: [], 
-    maxPlayers: 20,
-    worldName: 'Cargando...',
-    software: 'Detectando...',
+    players: [],
     version: '...',
+    software: 'Detectando...',
+    worldSize: '0 MB',
     ramUsedGB: 0,
     ramTotalGB: 0
 };
@@ -99,7 +98,101 @@ setInterval(() => {
     serverState.ram = Math.round(((totalMem - freeMem) / totalMem) * 100);
     serverState.ramUsedGB = ((totalMem - freeMem) / (1024 * 1024 * 1024)).toFixed(1);
     serverState.ramTotalGB = (totalMem / (1024 * 1024 * 1024)).toFixed(0);
-}, 2000);
+    
+    // Update world size periodically
+    updateWorldSize();
+
+}, 6000);
+
+async function loadWorldName() {
+    try {
+        const serverPath = await getFirstServerPath();
+        if (!serverPath) return;
+        const propPath = path.join(serverPath, 'server.properties');
+        if (await fs.pathExists(propPath)) {
+            const content = await fs.readFile(propPath, 'utf-8');
+            const match = content.match(/level-name=(.+)/);
+            if (match) serverState.worldName = match[1].trim();
+            else serverState.worldName = 'world';
+        } else {
+            serverState.worldName = 'world';
+        }
+    } catch (e) {
+        serverState.worldName = 'world';
+    }
+}
+
+async function peekLogsForMetadata() {
+    try {
+        const serverPath = await getFirstServerPath();
+        if (!serverPath) return;
+        const logPath = path.join(serverPath, 'logs', 'latest.log');
+        if (await fs.pathExists(logPath)) {
+            const content = await fs.readFile(logPath, 'utf-8');
+            const lines = content.split('\n').reverse().slice(0, 500); // Last 500 lines
+            
+            for (const line of lines) {
+                if (line.includes('Starting minecraft server version')) {
+                    const match = line.match(/version\s+([0-9.a-zA-Z_-]+)/);
+                    if (match && serverState.version === '...') serverState.version = match[1];
+                }
+                if (line.includes('This server is running')) {
+                    if (line.includes('Paper')) serverState.software = 'Paper';
+                    else if (line.includes('Spigot')) serverState.software = 'Spigot';
+                    else if (line.includes('Forge')) serverState.software = 'Forge';
+                }
+                if (line.includes('Fabric Loader')) serverState.software = 'Fabric';
+                if (line.toLowerCase().includes('mohist')) serverState.software = 'Mohist';
+                if (line.toLowerCase().includes('purpur')) serverState.software = 'Purpur';
+            }
+        }
+    } catch (e) {}
+}
+
+async function getDirSize(dirPath) {
+    let size = 0;
+    const files = await fs.readdir(dirPath).catch(() => []);
+    for (const file of files) {
+        const filePath = path.join(dirPath, file);
+        const stats = await fs.stat(filePath).catch(() => null);
+        if (!stats) continue;
+        if (stats.isDirectory()) size += await getDirSize(filePath);
+        else size += stats.size;
+    }
+    return size;
+}
+
+let lastWorldSizeUpdate = 0;
+async function updateWorldSize() {
+    // Solo actualizar cada 60 segundos
+    if (Date.now() - lastWorldSizeUpdate < 60000) return;
+    lastWorldSizeUpdate = Date.now();
+
+    try {
+        const serverPath = await getFirstServerPath();
+        if (!serverPath) return;
+        if (serverState.worldName === 'Cargando...') await loadWorldName();
+        
+        const worldPath = path.join(serverPath, serverState.worldName);
+        let sizeBytes = 0;
+        
+        if (await fs.pathExists(worldPath)) {
+            sizeBytes = await getDirSize(worldPath);
+        }
+        
+        // Si no existe el mundo o pesa 0, medimos toda la carpeta del servidor
+        if (sizeBytes === 0) {
+            sizeBytes = await getDirSize(serverPath);
+        }
+
+        if (sizeBytes > 1024 * 1024 * 1024) serverState.worldSize = (sizeBytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        else serverState.worldSize = (sizeBytes / (1024 * 1024)).toFixed(1) + ' MB';
+    } catch(e) {}
+}
+
+function resetPlayersOnlineStatus() {
+    serverState.players.forEach(p => { p.online = false; });
+}
 
 // REFRESH PLAYER DATA & DISCOVER DISCONNECTED/BANNED PLAYERS
 async function refreshAllPlayers() {
@@ -164,8 +257,6 @@ async function loadRealTimeMetadata() {
                 const content = await fs.readFile(propPath, 'utf-8');
                 const maxMatch = content.match(/max-players=(\d+)/);
                 if (maxMatch) serverState.maxPlayers = parseInt(maxMatch[1]);
-                const motdMatch = content.match(/motd=(.*)/);
-                if (motdMatch) serverState.software = motdMatch[1].replace(/\\:/g, ':').replace(/§[0-9a-f-k-r]/g, '').trim();
             }
         }
     } catch (e) {}
@@ -228,8 +319,17 @@ function addLog(msg) {
     if (serverState.logs.length > 500) serverState.logs.shift();
 
     if (msg.includes('Starting minecraft server version')) {
-        serverState.version = msg.split('version')[1]?.trim();
+        const parts = msg.split('version');
+        if (parts.length > 1) serverState.version = parts[1].trim();
     }
+    if (msg.includes('This server is running')) {
+        if (msg.includes('Paper')) serverState.software = 'Paper';
+        else if (msg.includes('Spigot')) serverState.software = 'Spigot';
+        else if (msg.includes('Forge')) serverState.software = 'Forge';
+    }
+    if (msg.includes('Fabric Loader')) serverState.software = 'Fabric';
+    if (msg.toLowerCase().includes('mohist')) serverState.software = 'Mohist';
+    if (msg.toLowerCase().includes('purpur')) serverState.software = 'Purpur';
 
     const joinMatch = msg.match(/\[Server thread\/INFO\]: (.*?)(\[.*\])? joined the game/);
     if (joinMatch) {
@@ -272,6 +372,7 @@ function addLog(msg) {
     }
 }
 
+
 function cleanupLingeringJava() {
     return new Promise((resolve) => {
         const cmd = 'wmic process where "name=\'java.exe\' and commandline like \'%server.jar%\'" get processid';
@@ -306,7 +407,11 @@ function stopProcessSync() {
     });
 }
 
-app.get('/api/server/status', (req, res) => res.json(serverState));
+app.get('/api/server/status', (req, res) => {
+    const data = { ...serverState };
+    data.uptimeMs = serverState.startTime ? (Date.now() - serverState.startTime) : 0;
+    res.json(data);
+});
 
 app.get('/api/current-server', (req, res) => {
     res.json({ name: serverState.worldName || 'world' });
@@ -321,27 +426,65 @@ async function getPlayerLocationFromNbt(playerName) {
         const cache = await fs.readJson(usercachePath);
         const entry = cache.find(c => c.name && c.name.toLowerCase() === playerName.toLowerCase());
         if (!entry || !entry.uuid) return null;
-        const uuid = entry.uuid; 
+        const uuid = entry.uuid;
+        const undashedUuid = uuid.replace(/-/g, '');
         const serverWorldName = serverState.worldName || 'world';
-        let playerdataPath = path.join(serverPath, serverWorldName, 'playerdata', uuid + '.dat');
         
-        if (!(await fs.pathExists(playerdataPath))) {
-            playerdataPath = path.join(serverPath, 'playerdata', uuid + '.dat');
+        // --- MULTI-PATH & MULTI-UUID SEARCH ---
+        const possibleFiles = [uuid + '.dat', undashedUuid + '.dat'];
+        const possibleDirs = [
+            path.join(serverPath, serverWorldName, 'playerdata'),
+            path.join(serverPath, 'playerdata'),
+            path.join(serverPath, 'world', 'playerdata')
+        ];
+
+        let playerdataPath = null;
+        for (const dir of possibleDirs) {
+            for (const file of possibleFiles) {
+                const fullPath = path.join(dir, file);
+                if (await fs.pathExists(fullPath)) {
+                    playerdataPath = fullPath;
+                    break;
+                }
+            }
+            if (playerdataPath) break;
         }
 
-        if (!(await fs.pathExists(playerdataPath))) return null;
+        if (!playerdataPath) {
+            return { location: {x:0,y:0,z:0}, dimension: 'minecraft:overworld' };
+        }
 
         const buf = await fs.readFile(playerdataPath);
         const { parsed } = await nbt.parse(buf);
         const simple = nbt.simplify(parsed);
         
         const toNum = (v) => (v && typeof v === 'object' && 'value' in v) ? Number(v.value) : Number(v);
-        
+        const toStr = (v) => (v && typeof v === 'object' && 'value' in v) ? String(v.value) : String(v);
+
         const location = { x: 0, y: 0, z: 0 };
         if (simple.Pos && Array.isArray(simple.Pos)) {
             location.x = Math.floor(toNum(simple.Pos[0]));
             location.y = Math.floor(toNum(simple.Pos[1]));
             location.z = Math.floor(toNum(simple.Pos[2]));
+        }
+
+        let dimension = 'minecraft:overworld';
+        // Extreme search for dimension info in common NBT tags
+        const dimKeys = ['Dimension', 'dimension', 'World', 'world', 'Dim', 'dim', 'MapDimension'];
+        let foundDim = null;
+        for (const key of dimKeys) {
+            if (simple[key] !== undefined) {
+                foundDim = toStr(simple[key]);
+                break;
+            }
+        }
+
+        if (foundDim !== null) {
+            const val = foundDim.toLowerCase();
+            if (val.includes('nether') || val === '-1') dimension = 'minecraft:the_nether';
+            else if (val.includes('end') || val === '1') dimension = 'minecraft:the_end';
+            else if (val.includes('overworld') || val === '0') dimension = 'minecraft:overworld';
+            else dimension = foundDim; // Fallback for custom dimensions
         }
 
         const spawn = { x: 0, y: 0, z: 0 };
@@ -362,11 +505,10 @@ async function getPlayerLocationFromNbt(playerName) {
                 lastDeath = { x: Math.floor(toNum(ld.X ?? ld.x)), y: Math.floor(toNum(ld.Y ?? ld.y)), z: Math.floor(toNum(ld.Z ?? ld.z)) };
             }
         }
-
-        return { location, spawn, lastDeath };
+        
+        return { location, dimension, spawn, lastDeath };
     } catch (e) { 
-        console.error("NBT Error:", e);
-        return null; 
+        return { location: {x:0,y:0,z:0}, dimension: 'minecraft:overworld' }; 
     }
 }
 
@@ -375,7 +517,16 @@ app.get('/api/server/player/:name/location', async (req, res) => {
         const name = (req.params.name || '').trim();
         if (!name) return res.status(400).json({ error: 'Falta el nombre' });
         const loc = await getPlayerLocationFromNbt(name);
-        if (!loc) return res.json({ location: null, spawn: null, lastDeath: null });
+        
+        if (loc) {
+            let p = serverState.players.find(x => x.name.toLowerCase() === name.toLowerCase());
+            if (p) {
+                p.location = loc.location || p.location;
+                p.dimension = loc.dimension || p.dimension;
+            }
+        }
+
+        if (!loc) return res.json({ location: null, dimension: 'minecraft:overworld', spawn: null, lastDeath: null });
         res.json(loc);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -393,11 +544,37 @@ app.post('/api/server/start', async (req, res) => {
             data.toString().split('\n').forEach(line => {
                 if (line.trim()) {
                     addLog(line.trim());
-                    if (line.includes('Done')) serverState.status = 'online';
+                    // Status Detection
+                    if (line.includes('Done') || line.includes('For help, type "help"')) {
+                        serverState.status = 'online';
+                        if (!serverState.startTime) serverState.startTime = Date.now();
+                    }
+                    // Version Detection
+                    if (line.includes('Starting minecraft server version')) {
+                        const match = line.match(/version\s+([0-9.]+)/);
+                        if (match) serverState.version = match[1];
+                    }
+                    // Software Detection
+                    if (line.includes('This server is running')) {
+                        if (line.includes('Paper')) serverState.software = 'Paper';
+                        else if (line.includes('Spigot')) serverState.software = 'Spigot';
+                        else if (line.includes('Forge')) serverState.software = 'Forge';
+                    }
+                    if (line.includes('Fabric Loader')) serverState.software = 'Fabric';
+                    if (line.toLowerCase().includes('mohist')) serverState.software = 'Mohist';
+                    if (line.toLowerCase().includes('purpur')) serverState.software = 'Purpur';
+
                 }
             });
         });
-        mcProcess.on('close', () => { serverState.status = 'offline'; mcProcess = null; });
+        mcProcess.on('close', () => { 
+            serverState.status = 'offline'; 
+            mcProcess = null; 
+            serverState.startTime = null;
+            resetPlayersOnlineStatus();
+        });
+        // Set start time immediately when spawning as fallback
+        serverState.startTime = Date.now();
         res.json({ message: 'OK' });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -406,7 +583,6 @@ app.post('/api/server/stop', async (req, res) => { await stopProcessSync(); res.
 app.post('/api/server/restart', async (req, res) => {
     await stopProcessSync();
     setTimeout(async () => {
-        // Ejecutamos la lógica de start manualmente o llamamos a una función
         const folders = await fs.readdir(config.SERVERS_ROOT);
         const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
         serverState.logs = [];
@@ -416,11 +592,34 @@ app.post('/api/server/restart', async (req, res) => {
             data.toString().split('\n').forEach(line => {
                 if (line.trim()) {
                     addLog(line.trim());
-                    if (line.includes('Done')) serverState.status = 'online';
+                    if (line.includes('Done') || line.includes('For help, type "help"')) {
+                        serverState.status = 'online';
+                        if (!serverState.startTime) serverState.startTime = Date.now();
+                    }
+                    if (line.includes('Starting minecraft server version')) {
+                        const match = line.match(/version\s+([0-9.]+)/);
+                        if (match) serverState.version = match[1];
+                    }
+                    if (line.includes('This server is running')) {
+                        if (line.includes('Paper')) serverState.software = 'Paper';
+                        else if (line.includes('Spigot')) serverState.software = 'Spigot';
+                        else if (line.includes('Forge')) serverState.software = 'Forge';
+                    }
+                    if (line.includes('Fabric Loader')) serverState.software = 'Fabric';
+                    if (line.toLowerCase().includes('mohist')) serverState.software = 'Mohist';
+                    if (line.toLowerCase().includes('purpur')) serverState.software = 'Purpur';
+
+
                 }
             });
         });
-        mcProcess.on('close', () => { serverState.status = 'offline'; mcProcess = null; });
+        mcProcess.on('close', () => { 
+            serverState.status = 'offline'; 
+            mcProcess = null; 
+            serverState.startTime = null;
+            resetPlayersOnlineStatus();
+        });
+        serverState.startTime = Date.now();
     }, 1000);
     res.json({ message: 'OK' });
 });
@@ -659,6 +858,8 @@ app.post('/api/upload', async (req, res) => {
 (async () => {
     await loadBanIpCache();
     await loadPlayerLastIp();
+    await loadWorldName();
+    await peekLogsForMetadata();
     app.listen(config.PORT, () => console.log(`[MARCTERNOS-API] Ready on ${config.PORT}`));
 })();
 
