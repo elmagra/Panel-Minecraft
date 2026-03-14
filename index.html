@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MC Host - Dashboard</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <style>
+    /* Estilos específicos para el Dashboard */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .stat-card-compact {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #0f172a;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+    }
+
+    .stat-label {
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .stat-value-new {
+      color: #f1f5f9;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .resource-card {
+      padding: 16px;
+    }
+
+    .resource-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .console-section {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative; /* Para posicionar las sugerencias */
+    }
+
+    .console-suggestions {
+      position: absolute;
+      bottom: 46px; /* Justo encima del input */
+      left: 1px;
+      right: 1px;
+      background: #0f172a;
+      border: 1px solid #3b82f6;
+      border-radius: 8px 8px 0 0;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none; /* Oculto por defecto */
+      z-index: 10;
+      box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
+    }
+
+    .suggestion-item {
+      padding: 8px 14px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 13px;
+      color: #94a3b8;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .suggestion-item:hover, .suggestion-item.active {
+      background: #1e293b;
+      color: #3b82f6;
+    }
+
+    .suggestion-item b { color: #f1f5f9; }
+
+    .console-output-new {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-bottom: none;
+      border-radius: 12px 12px 0 0;
+      height: 300px;
+      overflow-y: auto;
+      padding: 14px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    .console-input-wrapper {
+      display: flex;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 0 0 12px 12px;
+      padding: 8px 12px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .console-input-wrapper span {
+      color: #3b82f6;
+      font-weight: bold;
+      font-family: monospace;
+    }
+
+    .console-input-field {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: white;
+      font-family: monospace;
+      font-size: 14px;
+      outline: none;
+      padding: 4px 0;
+    }
+
+    .quick-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-control {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* Colores desaturados como en Propiedades */
+    .btn-start { background: #2d8a4e; }
+    .btn-stop { background: #b93d3d; }
+    .btn-restart { background: #d97706; }
+
+    .full-width { grid-column: span 3; }
+
+    @media (max-width: 768px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .full-width { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <img src="resources/marcternos_logo.png" alt="Marcternos" class="sidebar-logo">
+
+      <nav>
+        <a class="nav-link active" href="index.html">Dashboard</a>
+        <a class="nav-link" href="players.html">Jugadores</a>
+        <a class="nav-link" href="properties.html">Propiedades</a>
+        <a class="nav-link" href="create-world.html">Crear Mundo</a>
+        <a class="nav-link" href="files.html">Archivos</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>Dashboard</h2>
+          <p class="small-text">Servidor: <span id="serverName" style="color: #3b82f6; font-weight: 600;">Cargando...</span></p>
+        </div>
+        <div class="topbar-controls">
+          <div class="topbar-status">
+            <span class="status-dot dot-offline" id="globalStatusDot"></span>
+            <span class="topbar-status-text" id="globalStatusText">Apagado</span>
+          </div>
+          <div class="topbar-actions">
+            <button class="btn success btn-top" id="globalStartBtn" title="Encender">▶</button>
+            <button class="btn danger btn-top" id="globalStopBtn" title="Apagar">■</button>
+            <button class="btn warning btn-top" id="globalRestartBtn" title="Reiniciar">↻</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="dashboard-grid">
+        <!-- 2. Recursos: CPU y RAM -->
+        <div class="card resource-card">
+          <div class="resource-header">
+            <span class="stat-label">CPU</span>
+            <span class="stat-value-new" id="cpuUsage">24%</span>
+          </div>
+          <div class="progress-bar"><div id="cpuBar" class="progress-fill" style="width: 24%"></div></div>
+        </div>
+
+        <div class="card resource-card">
+          <div class="resource-header">
+            <span class="stat-label">RAM</span>
+            <span class="stat-value-new" id="ramUsage">4.2 GB / 8.0 GB</span>
+          </div>
+          <div class="progress-bar"><div id="ramBar" class="progress-fill" style="width: 52%"></div></div>
+        </div>
+
+        <div class="card resource-card">
+          <div class="resource-header">
+            <span class="stat-label">Almacenamiento</span>
+            <span class="stat-value-new" id="worldSize">1.4 GB</span>
+          </div>
+        </div>
+
+        <!-- 3. Stats secundarias -->
+        <div class="stat-card-compact">
+          <span class="stat-label">TPS</span>
+          <span class="stat-value-new" id="tpsValue">20.00</span>
+        </div>
+
+        <div class="stat-card-compact">
+          <span class="stat-label">Jugadores</span>
+          <span class="stat-value-new" id="playerCount">5 / 50</span>
+        </div>
+
+        <div class="stat-card-compact">
+          <span class="stat-label">Uptime</span>
+          <span class="stat-value-new" id="uptime">01:45:22</span>
+        </div>
+
+        <div class="stat-card-compact">
+          <span class="stat-label">Versión</span>
+          <span class="stat-value-new" id="serverVersion">Cargando...</span>
+        </div>
+
+        <!-- 4. Consola Integrada -->
+        <div class="full-width">
+          <section class="console-section">
+            <div id="consoleOutput" class="console-output-new">
+              <!-- Logs caerán aquí -->
+            </div>
+            <div id="consoleSuggestions" class="console-suggestions"></div>
+            <form id="consoleForm" class="console-input-wrapper">
+              <span>$</span>
+              <input type="text" id="consoleCommand" class="console-input-field" placeholder="Escribe un comando..." autocomplete="off" />
+            </form>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/global-controls.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    fetch('/api/current-server')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('serverName').innerText = data.name;
+      });
+  </script>
+</body>
+</html>

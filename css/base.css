@@ -1,0 +1,33 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.back-link {
+  color: #93c5fd;
+}
+
+.small-text {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}

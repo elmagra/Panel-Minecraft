@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MC Host - Jugador</title>
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/layout.css" />
+<link rel="stylesheet" href="css/components.css" />
+<link rel="stylesheet" href="css/players.css" />
+<link rel="stylesheet" href="css/player-detail.css" />
+<link rel="stylesheet" href="css/modals.css" />
+<link rel="stylesheet" href="css/responsive.css" /></head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <img src="resources/marcternos_logo.png" alt="Marcternos" class="sidebar-logo">
+
+      <nav>
+        <a class="nav-link" href="index.html">Dashboard</a>
+        <a class="nav-link active" href="players.html">Jugadores</a>
+        <a class="nav-link" href="properties.html">Propiedades</a>
+        <a class="nav-link" href="create-world.html">Crear Mundo</a>
+        <a class="nav-link" href="files.html">Archivos</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>Ficha del jugador</h2>
+          <p><a href="players.html" class="back-link">← Volver a jugadores</a></p>
+        </div>
+        <div class="topbar-controls">
+          <div class="topbar-status">
+            <span class="status-dot dot-offline" id="globalStatusDot"></span>
+            <span class="topbar-status-text" id="globalStatusText">Apagado</span>
+          </div>
+          <div class="topbar-actions">
+            <button class="btn success btn-top" id="globalStartBtn" title="Encender">▶</button>
+            <button class="btn danger btn-top" id="globalStopBtn" title="Apagar">■</button>
+            <button class="btn warning btn-top" id="globalRestartBtn" title="Reiniciar">↻</button>
+          </div>
+        </div>
+      </header>
+
+      <section id="playerProfile"></section>
+    </main>
+  </div>
+
+  <script src="js/global-controls.js"></script>
+  <script src="js/player.js"></script>
+</body>
+</html>

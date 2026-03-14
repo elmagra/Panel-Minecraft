@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MC Host - Jugadores</title>
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/layout.css" />
+<link rel="stylesheet" href="css/components.css" />
+<link rel="stylesheet" href="css/players.css" />
+<link rel="stylesheet" href="css/player-detail.css" />
+<link rel="stylesheet" href="css/modals.css" />
+<link rel="stylesheet" href="css/responsive.css" /></head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <img src="resources/marcternos_logo.png" alt="Marcternos" class="sidebar-logo">
+
+      <nav>
+        <a class="nav-link" href="index.html">Dashboard</a>
+        <a class="nav-link active" href="players.html">Jugadores</a>
+        <a class="nav-link" href="properties.html">Propiedades</a>
+        <a class="nav-link" href="create-world.html">Crear Mundo</a>
+        <a class="nav-link" href="files.html">Archivos</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>Jugadores</h2>
+          <p>Pulsa cualquier parte de la tarjeta para abrir el jugador.</p>
+        </div>
+        <div class="topbar-controls">
+          <div class="topbar-status">
+            <span class="status-dot dot-offline" id="globalStatusDot"></span>
+            <span class="topbar-status-text" id="globalStatusText">Apagado</span>
+          </div>
+          <div class="topbar-actions">
+            <button class="btn success btn-top" id="globalStartBtn" title="Encender">▶</button>
+            <button class="btn danger btn-top" id="globalStopBtn" title="Apagar">■</button>
+            <button class="btn warning btn-top" id="globalRestartBtn" title="Reiniciar">↻</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="card-header-row">
+          <h3>Lista de jugadores</h3>
+          <button id="refreshPlayersBtn" class="btn secondary">Actualizar</button>
+        </div>
+
+        <div class="players-filters-row">
+          <button id="showAllPlayersBtn" class="btn secondary filter-active">Todos</button>
+          <button id="showWhitelistBtn" class="btn primary">Whitelist</button>
+          <button id="showBanIpBtn" class="btn danger">Ban IP</button>
+          <button id="showBanUuidBtn" class="btn danger">Ban UUID</button>
+        </div>
+
+        <div id="playersGrid" class="players-card-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/global-controls.js"></script>
+  <script src="js/players.js"></script>
+</body>
+</html>

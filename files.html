@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MC Host - Archivos</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="stylesheet" href="css/files.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <img src="resources/marcternos_logo.png" alt="Marcternos" class="sidebar-logo">
+
+      <nav>
+        <a class="nav-link" href="index.html">Dashboard</a>
+        <a class="nav-link" href="players.html">Jugadores</a>
+        <a class="nav-link" href="properties.html">Propiedades</a>
+        <a class="nav-link" href="create-world.html">Crear Mundo</a>
+        <a class="nav-link active" href="files.html">Archivos</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h2>Gestor de Archivos</h2>
+          <p class="small-text">Sube tus mods (.jar) y gestiona el servidor.</p>
+        </div>
+        <div class="topbar-controls">
+          <div class="topbar-status">
+            <span class="status-dot dot-offline" id="globalStatusDot"></span>
+            <span class="topbar-status-text" id="globalStatusText">Apagado</span>
+          </div>
+          <div class="topbar-actions">
+            <button class="btn success btn-top" id="globalStartBtn" title="Encender">▶</button>
+            <button class="btn danger btn-top" id="globalStopBtn" title="Apagar">■</button>
+            <button class="btn warning btn-top" id="globalRestartBtn" title="Reiniciar">↻</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="card file-manager-card">
+        <div class="file-manager-header">
+          <div class="current-path">
+            <span id="breadcrumbContainer">/</span>
+          </div>
+          <div class="file-actions">
+            <label for="fileUploadInput" class="btn primary">
+              <span>↑</span> Subir Archivo
+            </label>
+            <input type="file" id="fileUploadInput" style="display: none;" multiple>
+            <button id="newFolderBtn" class="btn secondary">Nueva Carpeta</button>
+          </div>
+        </div>
+
+        <div class="file-list-container">
+          <table class="file-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Tamaño</th>
+                <th>Última modificación</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="fileListBody">
+              <!-- Se cargará aquí dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="uploadModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3>Subiendo archivos...</h3>
+      <div class="upload-progress-container">
+        <div id="uploadProgressBar" class="upload-progress-fill" style="width: 0%"></div>
+      </div>
+      <p id="uploadStatusText">Preparando...</p>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/global-controls.js"></script>
+  <script src="js/files.js"></script>
+</body>
+</html>
