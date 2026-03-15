@@ -1,44 +1,23 @@
-[00:31:14] [ServerMain/INFO]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
-[00:31:15] [ServerMain/INFO]: Loaded 7 recipes
-[00:31:15] [ServerMain/INFO]: Loaded 1271 advancements
-[00:31:16] [Server thread/INFO]: Starting minecraft server version 1.20.1
-[00:31:16] [Server thread/INFO]: Loading properties
-[00:31:16] [Server thread/INFO]: Default game type: CREATIVE
-[00:31:16] [Server thread/INFO]: Generating keypair
-[00:31:16] [Server thread/INFO]: Starting Minecraft server on *:25565
-[00:31:16] [Server thread/INFO]: Using default channel type
-[00:31:16] [Server thread/INFO]: Preparing level "world"
-[00:31:17] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
-[00:31:20] [Worker-Main-4/INFO]: Preparing spawn area: 0%
-[00:31:20] [Worker-Main-7/INFO]: Preparing spawn area: 0%
-[00:31:20] [Worker-Main-5/INFO]: Preparing spawn area: 0%
-[00:31:20] [Worker-Main-4/INFO]: Preparing spawn area: 0%
-[00:31:20] [Worker-Main-1/INFO]: Preparing spawn area: 0%
-[00:31:20] [Worker-Main-4/INFO]: Preparing spawn area: 0%
-[00:31:20] [Worker-Main-4/INFO]: Preparing spawn area: 4%
-[00:31:21] [Server thread/INFO]: Time elapsed: 3403 ms
-[00:31:21] [Server thread/INFO]: Done (4.887s)! For help, type "help"
-[00:35:27] [Server thread/INFO]: Unknown or incomplete command, see below for error
-[00:35:27] [Server thread/INFO]: kil<--[HERE]
-[00:35:36] [User Authenticator #1/INFO]: UUID of player elmagra is 72ed8263-91da-415d-84d6-2b2635c1c1b4
-[00:35:36] [Server thread/INFO]: elmagra[/192.168.1.200:52985] logged in with entity id 135 at (376.5, 79.11759293784915, 880.5)
-[00:35:36] [Server thread/INFO]: elmagra joined the game
-[00:35:39] [Server thread/INFO]: elmagra was killed
-[00:35:39] [Server thread/INFO]: Killed elmagra
-[00:35:47] [Server thread/INFO]: Nothing changed. The player already is an operator
-[00:35:54] [Server thread/INFO]: There are no bans
-[00:36:19] [Server thread/INFO]: Unknown or incomplete command, see below for error
-[00:36:19] [Server thread/INFO]: timeset night<--[HERE]
-[00:36:34] [Server thread/INFO]: Set the time to 13000
-[00:36:49] [Server thread/INFO]: [elmagra: Set the time to 1000]
-[00:37:00] [Server thread/INFO]: Stopping the server
-[00:37:00] [Server thread/INFO]: Stopping server
-[00:37:00] [Server thread/INFO]: Saving players
-[00:37:01] [Server thread/INFO]: Saving worlds
-[00:37:01] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[00:37:01] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[00:37:01] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[00:37:01] [Server thread/INFO]: ThreadedAnvilChunkStorage (world): All chunks are saved
-[00:37:01] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[00:37:01] [Server thread/INFO]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[00:37:01] [Server thread/INFO]: ThreadedAnvilChunkStorage: All dimensions are saved
+[14:27:26] [ServerMain/INFO]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[14:27:27] [ServerMain/INFO]: Loaded 7 recipes
+[14:27:27] [ServerMain/INFO]: Loaded 1271 advancements
+[14:27:27] [Server thread/INFO]: Starting minecraft server version 1.20.1
+[14:27:27] [Server thread/INFO]: Loading properties
+[14:27:27] [Server thread/INFO]: Default game type: CREATIVE
+[14:27:27] [Server thread/INFO]: Generating keypair
+[14:27:27] [Server thread/INFO]: Starting Minecraft server on *:25565
+[14:27:27] [Server thread/INFO]: Using default channel type
+[14:27:27] [Server thread/INFO]: Preparing level "world"
+[14:27:28] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
+[14:27:30] [Worker-Main-5/INFO]: Preparing spawn area: 0%
+[14:27:30] [Worker-Main-1/INFO]: Preparing spawn area: 0%
+[14:27:30] [Worker-Main-5/INFO]: Preparing spawn area: 0%
+[14:27:30] [Worker-Main-5/INFO]: Preparing spawn area: 0%
+[14:27:30] [Worker-Main-4/INFO]: Preparing spawn area: 0%
+[14:27:31] [Worker-Main-1/INFO]: Preparing spawn area: 2%
+[14:27:31] [Worker-Main-1/INFO]: Preparing spawn area: 84%
+[14:27:31] [Server thread/INFO]: Time elapsed: 3055 ms
+[14:27:31] [Server thread/INFO]: Done (4.270s)! For help, type "help"
+[14:27:43] [User Authenticator #1/INFO]: UUID of player elmagra is 72ed8263-91da-415d-84d6-2b2635c1c1b4
+[14:27:43] [Server thread/INFO]: elmagra[/192.168.1.200:60612] logged in with entity id 134 at (98.62749645346648, -345.4625227074288, 7.986536145210034)
+[14:27:43] [Server thread/INFO]: elmagra joined the game

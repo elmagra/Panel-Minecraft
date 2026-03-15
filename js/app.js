@@ -76,7 +76,7 @@ async function updateStatus() {
         // Stats & Version
         if ($("serverVersion")) {
             const ver = data.version && data.version !== '...' ? data.version : '';
-            const soft = data.software && data.software !== 'Detectando...' ? data.software : (ver ? 'Minecraft' : '...');
+            const soft = data.software && data.software !== 'Detectando...' ? data.software : (ver ? 'Vanilla' : '...');
             $("serverVersion").textContent = ver ? `${soft} ${ver}` : soft;
         }
 

@@ -31,12 +31,14 @@
   gap: 12px;
   font-size: 14px;
   font-weight: 500;
+  border: 1px solid transparent;
 }
 
 .nav-link i {
-  width: 20px;
+  width: 26px;
   font-size: 16px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .nav-link:hover {

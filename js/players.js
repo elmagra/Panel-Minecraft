@@ -70,9 +70,26 @@ function applyFilterAndRender() {
             return renderBadge(`${Math.floor(loc.x)} ${Math.floor(loc.y)} ${Math.floor(loc.z)}`, "coords");
           })()}
         </div>
-        <div class="player-card-row compact" style="margin-top: 4px;">
+        <div class="player-card-row compact" style="margin-top: 4px; align-items: center;">
           <span>Dimensión</span>
-          <span style="font-size: 13px; color: var(--text-dim);">${player.dimension || 'Overworld'}</span>
+          <span style="
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: ${(player.dimension || '').toLowerCase().includes('nether') ? 'rgba(239, 68, 68, 0.15)' : (player.dimension || '').toLowerCase().includes('end') ? 'rgba(168, 85, 247, 0.15)' : 'rgba(34, 197, 94, 0.15)'};
+            color: ${(player.dimension || '').toLowerCase().includes('nether') ? '#f87171' : (player.dimension || '').toLowerCase().includes('end') ? '#c084fc' : '#4ade80'};
+            border: 1px solid ${(player.dimension || '').toLowerCase().includes('nether') ? 'rgba(239, 68, 68, 0.3)' : (player.dimension || '').toLowerCase().includes('end') ? 'rgba(168, 85, 247, 0.3)' : 'rgba(34, 197, 94, 0.3)'};
+          ">${(() => {
+            const d = (player.dimension || 'Overworld').toLowerCase();
+            if (d.includes('nether')) return 'Nether';
+            if (d.includes('end')) return 'End';
+            if (d.includes('overworld')) return 'Overworld';
+            return (player.dimension || '').split(':').pop().replace('_', ' ');
+          })()}</span>
         </div>
       </div>`;
     grid.appendChild(card);

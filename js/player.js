@@ -88,6 +88,50 @@ async function sendPardonIp(playerName, switchEl = null, targetState = null) {
     }
 }
 
+async function sendBanUuid(playerName, switchEl = null, targetState = null) {
+    if (switchEl && targetState !== null) switchEl.checked = targetState;
+    isUIBlocked = true;
+    if (blockTimeout) clearTimeout(blockTimeout);
+    try {
+        const res = await fetch('/api/server/ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: playerName })
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || 'No se pudo banear al jugador');
+            if (switchEl) switchEl.checked = false;
+        }
+        blockTimeout = setTimeout(() => { isUIBlocked = false; initPlayerProfile(true); }, 3000);
+    } catch(e) {
+        if (switchEl) switchEl.checked = false;
+        isUIBlocked = false;
+    }
+}
+
+async function sendPardonUuid(playerName, switchEl = null, targetState = null) {
+    if (switchEl && targetState !== null) switchEl.checked = targetState;
+    isUIBlocked = true;
+    if (blockTimeout) clearTimeout(blockTimeout);
+    try {
+        const res = await fetch('/api/server/pardon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: playerName })
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || 'No se pudo desbanear al jugador');
+            if (switchEl) switchEl.checked = true;
+        }
+        blockTimeout = setTimeout(() => { isUIBlocked = false; initPlayerProfile(true); }, 3000);
+    } catch(e) {
+        if (switchEl) switchEl.checked = true;
+        isUIBlocked = false;
+    }
+}
+
 function renderSwitch(checked, onchange) {
   return `<label class='switch'><input type='checkbox' ${checked ? "checked" : ""} onchange="${onchange}"><span class='slider'></span></label>`;
 }
@@ -104,7 +148,7 @@ async function initPlayerProfile(force = false) {
   window.handleOpChange = (el) => sendPlayerCommand(player.name, el.checked ? `op ${player.name}` : `deop ${player.name}`, el, el.checked);
   window.handleWhitelistChange = (el) => sendPlayerCommand(player.name, el.checked ? `whitelist add ${player.name}` : `whitelist remove ${player.name}`, el, el.checked);
   window.handleBanIp = (el) => { if (el.checked) sendBanIp(player.name, player.ip, el, true); else sendPardonIp(player.name, el, false); };
-  window.handleBanUuid = (el) => sendPlayerCommand(player.name, el.checked ? `ban ${player.name}` : `pardon ${player.name}`, el, el.checked);
+  window.handleBanUuid = (el) => { if (el.checked) sendBanUuid(player.name, el, true); else sendPardonUuid(player.name, el, false); };
   
   window.handleGamemode = (val) => sendPlayerCommand(player.name, `gamemode ${val.toLowerCase()} ${player.name}`);
   window.tpToSpawn = (x, y, z) => sendPlayerCommand(player.name, `tp ${player.name} ${x} ${y} ${z}`);
@@ -199,7 +243,13 @@ async function initPlayerProfile(force = false) {
                                 color: ${(player.dimension || '').toLowerCase().includes('nether') ? '#f87171' : (player.dimension || '').toLowerCase().includes('end') ? '#c084fc' : '#4ade80'};
                                 border: 1px solid ${(player.dimension || '').toLowerCase().includes('nether') ? 'rgba(239, 68, 68, 0.3)' : (player.dimension || '').toLowerCase().includes('end') ? 'rgba(168, 85, 247, 0.3)' : 'rgba(34, 197, 94, 0.3)'};
                             ">
-                                ${(player.dimension || 'overworld').split(':').pop().replace('_', ' ')}
+                                ${(() => {
+                                        const d = (player.dimension || 'overworld').toLowerCase();
+                                        if (d.includes('nether')) return 'Nether';
+                                        if (d.includes('end')) return 'End';
+                                        if (d.includes('overworld')) return 'Overworld';
+                                        return (player.dimension || 'overworld').split(':').pop().replace('_', ' ');
+                                    })()}
                             </span>
                         </div>
                     </div>

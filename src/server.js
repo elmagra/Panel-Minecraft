@@ -633,21 +633,21 @@ app.post('/api/server/ban-ip', async (req, res) => {
         const banIpPath = path.join(serverPath, 'banned-ips.json');
         const clientIp = (ip && typeof ip === 'string' && ip.includes('.') && ip !== '0.0.0.0') ? ip : null;
 
+        await loadPlayerLastIp();
+        const targetIp = clientIp || playerLastIp[name.toLowerCase()] || null;
+        if (!targetIp) return res.status(400).json({ error: 'Servidor apagado o IP no encontrada. Necesitas la IP del jugador (que se haya conectado alguna vez).' });
+
         if (mcProcess) {
-            mcProcess.stdin.write(`ban-ip ${name}\n`);
+            mcProcess.stdin.write(`ban-ip ${targetIp}\n`);
             // Cacheamos la IP sospechosa inmediatamente para que la UI no parpadee
-            if (clientIp) {
-                banIpByName[name.toLowerCase()] = clientIp;
-                saveBanIpCache();
-            }
+            banIpByName[name.toLowerCase()] = targetIp;
+            saveBanIpCache();
             // Refrescamos después de un tiempo para confirmar lo que Minecraft escribió
             setTimeout(refreshAllPlayers, 2500);
             return res.json({ message: 'OK' });
         }
 
-        await loadPlayerLastIp();
-        const targetIp = clientIp || playerLastIp[name.toLowerCase()] || null;
-        if (!targetIp) return res.status(400).json({ error: 'Servidor apagado. Necesitas la IP del jugador (conéctate al menos una vez o enciende el servidor).' });
+
         let bans = await fs.pathExists(banIpPath) ? await fs.readJson(banIpPath).catch(() => []) : [];
         if (bans.some(b => (b.ip || '') === targetIp)) return res.json({ message: 'OK' });
         bans.push({
@@ -716,9 +716,134 @@ app.post('/api/server/pardon-ip', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/server/ban', async (req, res) => {
+    try {
+        const { name } = req.body || {};
+        if (!name) return res.status(400).json({ error: 'Falta el nombre' });
+        
+        if (mcProcess) {
+            mcProcess.stdin.write(`ban ${name}\n`);
+            setTimeout(refreshAllPlayers, 2000);
+            return res.json({ message: 'OK' });
+        }
+
+        const folders = await fs.readdir(config.SERVERS_ROOT);
+        const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
+        const banPath = path.join(serverPath, 'banned-players.json');
+        const cachePath = path.join(serverPath, 'usercache.json');
+
+        // Intentar obtener UUID del cache
+        let uuid = null;
+        if (await fs.pathExists(cachePath)) {
+            const cache = await fs.readJson(cachePath).catch(() => []);
+            const entry = cache.find(c => c.name && c.name.toLowerCase() === name.toLowerCase());
+            if (entry) uuid = entry.uuid;
+        }
+
+        if (!uuid) return res.status(400).json({ error: 'No se encontró el UUID del jugador. El servidor debe estar encendido o el jugador haber entrado antes.' });
+
+        let bans = await fs.pathExists(banPath) ? await fs.readJson(banPath).catch(() => []) : [];
+        if (bans.some(b => b.uuid === uuid)) return res.json({ message: 'OK' });
+
+        bans.push({
+            uuid: uuid,
+            name: name,
+            created: new Date().toISOString().replace('T', ' ').slice(0, 19) + ' +0000',
+            source: 'Server',
+            expires: 'forever',
+            reason: 'Banned by an operator.'
+        });
+
+        await fs.writeJson(banPath, bans, { spaces: 2 });
+        refreshAllPlayers();
+        res.json({ message: 'OK' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/server/pardon', async (req, res) => {
+    try {
+        const { name } = req.body || {};
+        if (!name) return res.status(400).json({ error: 'Falta el nombre' });
+
+        if (mcProcess) {
+            mcProcess.stdin.write(`pardon ${name}\n`);
+            setTimeout(refreshAllPlayers, 2000);
+            return res.json({ message: 'OK' });
+        }
+
+        const folders = await fs.readdir(config.SERVERS_ROOT);
+        const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
+        const banPath = path.join(serverPath, 'banned-players.json');
+
+        if (await fs.pathExists(banPath)) {
+            let bans = await fs.readJson(banPath);
+            const before = bans.length;
+            bans = bans.filter(b => b.name && b.name.toLowerCase() !== name.toLowerCase());
+            if (bans.length < before) {
+                await fs.writeJson(banPath, bans, { spaces: 2 });
+                refreshAllPlayers();
+                return res.json({ message: 'OK' });
+            }
+        }
+        res.status(404).json({ error: 'Jugador no encontrado en la lista de baneos' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+
 app.post('/api/server/command', async (req, res) => {
-    if (!mcProcess) return res.status(400).json({ error: 'Apagado' });
     let command = req.body.command;
+    
+    // OFFLINE SUPPORT FOR BASIC OPERATIONS
+    if (!mcProcess) {
+        try {
+            const folders = await fs.readdir(config.SERVERS_ROOT);
+            const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
+            
+            const handleList = async (cmdList, addAction, removeAction, file) => {
+                const args = command.split(' ');
+                if (cmdList.includes(args[0])) {
+                    const isAdd = args[0] === addAction || (args[0] === cmdList[0] && args[1] === 'add');
+                    const target = args[0] === 'op' || args[0] === 'deop' ? args[1] : args[2];
+                    
+                    if (target) {
+                        const filePath = path.join(serverPath, file);
+                        let list = await fs.pathExists(filePath) ? await fs.readJson(filePath).catch(()=>[]) : [];
+                        const cachePath = path.join(serverPath, 'usercache.json');
+                        let uuid = "Desconocido";
+                        if (await fs.pathExists(cachePath)) {
+                            const cache = await fs.readJson(cachePath).catch(()=>[]);
+                            const entry = cache.find(c => c.name && c.name.toLowerCase() === target.toLowerCase());
+                            if (entry) uuid = entry.uuid;
+                        }
+                        const before = list.length;
+                        if (isAdd) {
+                            if (!list.some(x => x.name && x.name.toLowerCase() === target.toLowerCase())) {
+                                if (file === 'ops.json') list.push({ uuid, name: target, level: 4, bypassesPlayerLimit: false });
+                                else list.push({ uuid, name: target });
+                            }
+                        } else {
+                            list = list.filter(x => !(x.name && x.name.toLowerCase() === target.toLowerCase()));
+                        }
+                        
+                        await fs.writeJson(filePath, list, { spaces: 2 });
+                        setTimeout(refreshAllPlayers, 500);
+                        return res.json({ message: 'OK' });
+                    }
+                }
+                return false;
+            };
+
+            if (command.startsWith('whitelist ')) {
+                if (await handleList(['whitelist'], 'add', 'remove', 'whitelist.json')) return;
+            } else if (command.startsWith('op ') || command.startsWith('deop ')) {
+                if (await handleList(['op', 'deop'], 'op', 'deop', 'ops.json')) return;
+            }
+
+            return res.status(400).json({ error: 'Apagado' });
+        } catch(e) {
+            return res.status(500).json({ error: e.message });
+        }
+    }
 
     if (command.startsWith('pardon-ip ')) {
         const target = (command.split(' ')[1] || '').trim();
@@ -808,25 +933,43 @@ app.get('/api/files', async (req, res) => {
         if (folders.length === 0) return res.json([]);
         const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
         const subPath = (req.query.path || '/').replace(/^\//, '');
-        const targetDir = path.join(serverPath, subPath);
+        const targetDir = path.normalize(path.join(serverPath, subPath));
 
-        if (!(await fs.pathExists(targetDir))) return res.status(404).json({ error: 'Ruta no encontrada' });
+        if (!(await fs.pathExists(targetDir))) {
+            console.error(`[FILES] Dir not found: ${targetDir}`);
+            return res.status(404).json({ error: 'Ruta no encontrada' });
+        }
 
         const items = await fs.readdir(targetDir);
         const result = [];
 
         for (const item of items) {
             const fullPath = path.join(targetDir, item);
-            const stats = await fs.stat(fullPath);
+            let stats;
+            try { stats = await fs.stat(fullPath); } catch(e) { continue; }
+            
+            let sizeStr = '-';
+            if (!stats.isDirectory()) {
+                const s = stats.size;
+                if (s === 0) sizeStr = '0 B';
+                else if (s < 1024) sizeStr = s + ' B';
+                else if (s < 1024 * 1024) sizeStr = (s / 1024).toFixed(1) + ' KB';
+                else if (s < 1024 * 1024 * 1024) sizeStr = (s / (1024 * 1024)).toFixed(1) + ' MB';
+                else sizeStr = (s / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+            }
+
             result.push({
                 name: item,
                 type: stats.isDirectory() ? 'folder' : 'file',
-                size: stats.isDirectory() ? '-' : (stats.size / (1024 * 1024)).toFixed(2) + ' MB',
+                size: sizeStr,
                 date: stats.mtime.toISOString().replace(/T/, ' ').substring(0, 16)
             });
         }
         res.json(result);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        console.error(`[FILES] Error listing path:`, e);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 const { IncomingForm } = require('formidable');
@@ -842,7 +985,6 @@ app.post('/api/upload', async (req, res) => {
         form.parse(req, async (err, fields, files) => {
             if (err) return res.status(500).json({ error: err.message });
             
-            // Mover archivos a su nombre original
             const fileArray = Array.isArray(files.file) ? files.file : [files.file];
             for (const f of fileArray) {
                 if (!f) continue;
@@ -851,6 +993,96 @@ app.post('/api/upload', async (req, res) => {
             }
             res.json({ message: 'OK' });
         });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/files/download', async (req, res) => {
+    try {
+        const folders = await fs.readdir(config.SERVERS_ROOT);
+        const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
+        const subPath = (req.query.path || '').replace(/^\//, '');
+        const targetFile = path.join(serverPath, subPath);
+
+        if (!(await fs.pathExists(targetFile))) return res.status(404).json({ error: 'Archivo no encontrado' });
+        res.download(targetFile);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/files/delete', async (req, res) => {
+    try {
+        const folders = await fs.readdir(config.SERVERS_ROOT);
+        const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
+        const { path: subPath } = req.body;
+        const target = path.join(serverPath, (subPath || '').replace(/^\//, ''));
+
+        if (!(await fs.pathExists(target))) return res.status(404).json({ error: 'No existe' });
+        await fs.remove(target);
+        res.json({ message: 'OK' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/files/rename', async (req, res) => {
+    try {
+        const folders = await fs.readdir(config.SERVERS_ROOT);
+        const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
+        const { oldPath, newPath } = req.body;
+        
+        const oldTarget = path.join(serverPath, (oldPath || '').replace(/^\//, ''));
+        const newTarget = path.join(serverPath, (newPath || '').replace(/^\//, ''));
+
+        if (!(await fs.pathExists(oldTarget))) return res.status(404).json({ error: 'No existe' });
+        await fs.move(oldTarget, newTarget);
+        res.json({ message: 'OK' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/files/create-folder', async (req, res) => {
+    try {
+        const folders = await fs.readdir(config.SERVERS_ROOT);
+        const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
+        const { path: subPath, name } = req.body;
+        const target = path.join(serverPath, (subPath || '').replace(/^\//, ''), name);
+
+        await fs.ensureDir(target);
+        res.json({ message: 'OK' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/files/content', async (req, res) => {
+    try {
+        const folders = await fs.readdir(config.SERVERS_ROOT).catch(() => []);
+        if (folders.length === 0) return res.status(404).json({ error: 'Servidor no encontrado' });
+        
+        const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
+        const subPath = (req.query.path || '').replace(/^\//, '');
+        const target = path.normalize(path.join(serverPath, subPath));
+
+        if (!(await fs.pathExists(target))) {
+            console.error(`[FILES-CONTENT] Not found: ${target}`);
+            return res.status(404).json({ error: 'El archivo no existe en el disco' });
+        }
+        
+        const stats = await fs.stat(target);
+        if (stats.isDirectory()) return res.status(400).json({ error: 'No se puede editar una carpeta' });
+        if (stats.size > 2 * 1024 * 1024) return res.status(400).json({ error: 'Archivo demasiado grande para el editor (máximo 2MB)' });
+
+        const content = await fs.readFile(target, 'utf-8');
+        res.json({ content });
+    } catch (e) { 
+        console.error(`[FILES-CONTENT] Error:`, e);
+        res.status(500).json({ error: 'Error del sistema al leer: ' + e.message }); 
+    }
+});
+
+app.post('/api/files/content', async (req, res) => {
+    try {
+        const folders = await fs.readdir(config.SERVERS_ROOT);
+        const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
+        const { path: subPath, content } = req.body;
+        const target = path.join(serverPath, (subPath || '').replace(/^\//, ''));
+
+        await fs.writeFile(target, content, 'utf-8');
+        res.json({ message: 'OK' });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
