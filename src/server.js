@@ -90,6 +90,142 @@ async function savePlayerLastIp() {
     } catch (e) {}
 }
 
+function addCreationStep(msg) {
+    const time = new Date().toLocaleTimeString();
+    creationStatus.steps.push({ time, msg });
+    if (creationStatus.steps.length > 200) creationStatus.steps.shift();
+}
+
+async function createWorldFromRequest(payload) {
+    try {
+        const type = (payload.type || 'Vanilla').toString();
+        const version = (payload.version || '1.20.1').toString();
+        const levelName = (payload.levelName || 'world').toString().trim().replace(/[^a-zA-Z0-9_\- ]/g, '') || 'world';
+        // Si el usuario no pone semilla, se deja vacía → Minecraft la genera aleatoriamente
+        const levelSeed = (payload.levelSeed || '').toString().trim();
+        const levelType = (payload.levelType || 'default').toString();
+        // Semilla: si está vacía, NO ponemos nada → Minecraft genera una aleatoria por sí solo
+        const maxWorldSize = payload.maxWorldSize && !isNaN(Number(payload.maxWorldSize))
+            ? Number(payload.maxWorldSize)
+            : 29999984;
+
+        creationStatus = { steps: [], progress: 0, status: 'running', name: levelName };
+        addCreationStep(`🚀 Preparando mundo "${levelName}" · ${type} ${version}`);
+        addCreationStep(`🌱 Semilla: ${levelSeed !== '' ? levelSeed : 'aleatoria (generada por Minecraft)'}  |  Tipo: ${levelType}`);
+
+        // 1) Apagar servidor si está encendido
+        if (mcProcess) {
+            addCreationStep('⛔ Deteniendo servidor actual...');
+            await stopProcessSync();
+            addCreationStep('✅ Servidor detenido.');
+        }
+        creationStatus.progress = 5;
+
+        // 2) Asegurar que el directorio raíz existe
+        const root = config.SERVERS_ROOT;
+        await fs.ensureDir(root);
+
+        // 3) Eliminar carpetas de servidores anteriores
+        const folders = await fs.readdir(root).catch(() => []);
+        for (const f of folders) {
+            const full = path.join(root, f);
+            const stat = await fs.stat(full).catch(() => null);
+            if (stat && stat.isDirectory()) {
+                addCreationStep(`🗑️ Eliminando servidor anterior: ${f}`);
+                await fs.remove(full).catch(err => {
+                    console.warn('[CREATE-WORLD] No se pudo eliminar', full, err.message);
+                });
+            }
+        }
+        creationStatus.progress = 15;
+
+        // 4) Crear nueva carpeta de servidor
+        const serverPath = path.join(root, levelName);
+        await fs.ensureDir(serverPath);
+        addCreationStep(`📁 Carpeta del mundo creada: .../${levelName}`);
+        creationStatus.progress = 20;
+
+        // 5) Resolver URL del JAR
+        addCreationStep(`🔍 Buscando JAR de ${type} ${version}...`);
+        const jarUrl = await getJarUrl(type, version);
+        if (!jarUrl) throw new Error(`No se pudo obtener la URL del JAR para ${type} ${version}.`);
+        addCreationStep(`🔗 URL resuelta. Iniciando descarga...`);
+        creationStatus.progress = 25;
+
+        // 6) Descargar JAR
+        const jarDest = path.join(serverPath, 'server.jar');
+        await downloadFile(jarUrl, jarDest, (p) => {
+            creationStatus.progress = 25 + Math.round((p / 100) * 45);
+            // Log cada 25%
+            const pct = Math.round(p);
+            if (pct === 25 || pct === 50 || pct === 75 || pct === 100) {
+                addCreationStep(`📥 Descargando server.jar... ${pct}%`);
+            }
+        });
+        addCreationStep('✅ server.jar descargado correctamente.');
+        creationStatus.progress = 72;
+
+        // 7) Escribir eula.txt
+        await fs.writeFile(path.join(serverPath, 'eula.txt'), 'eula=true\n');
+        addCreationStep('📄 EULA aceptada automáticamente.');
+        creationStatus.progress = 78;
+
+        // 8) Escribir server.properties
+        const props = [
+            `# Generado por Marcternos Panel el ${new Date().toISOString()}`,
+            `level-name=${levelName}`,
+            // Solo escribir level-seed si el usuario proporcionó una; si no, Minecraft genera la suya
+            ...(levelSeed !== '' ? [`level-seed=${levelSeed}`] : []),
+            `level-type=${levelType}`,
+            `max-world-size=${maxWorldSize}`,
+            'motd=\u00a76\u00a7lMarcternos \u00a7r\u00a77- Servidor Minecraft',
+            'online-mode=true',
+            'enable-command-block=false',
+            'pvp=true',
+            'difficulty=normal',
+            'gamemode=survival',
+            'spawn-protection=16',
+            'max-players=20',
+            'view-distance=10',
+            'simulation-distance=10'
+        ];
+        const propPath = path.join(serverPath, 'server.properties');
+        await fs.writeFile(propPath, props.join('\n') + '\n', 'utf-8');
+        addCreationStep('⚙️ server.properties configurado.');
+        creationStatus.progress = 88;
+
+        // 9) Inicializar archivos JSON necesarios
+        const emptyJson = JSON.stringify([], null, 2);
+        await fs.writeFile(path.join(serverPath, 'ops.json'), emptyJson);
+        await fs.writeFile(path.join(serverPath, 'whitelist.json'), emptyJson);
+        await fs.writeFile(path.join(serverPath, 'banned-players.json'), emptyJson);
+        await fs.writeFile(path.join(serverPath, 'banned-ips.json'), emptyJson);
+        addCreationStep('📋 Archivos de configuración inicializados.');
+        creationStatus.progress = 95;
+
+        // 10) Resetear estado global del servidor
+        serverState.worldName = levelName;
+        serverState.version = version;
+        serverState.software = type;
+        serverState.status = 'offline';
+        serverState.players = [];
+        serverState.logs = [];
+        serverState.startTime = null;
+        serverState.worldSize = '0 MB';
+        banIpByName = {};
+        playerLastIp = {};
+
+        addCreationStep(`🎉 ¡Mundo "${levelName}" listo! Puedes encenderlo desde el Dashboard.`);
+        creationStatus.progress = 100;
+        creationStatus.status = 'done';
+
+    } catch (e) {
+        console.error('[CREATE-WORLD]', e);
+        addCreationStep(`❌ Error: ${e.message}`);
+        creationStatus.status = 'error';
+    }
+}
+
 // Monitor de recursos
 setInterval(() => {
     osUtils.cpuUsage((v) => { serverState.cpu = Math.round(v * 100); });
@@ -417,6 +553,18 @@ app.get('/api/current-server', (req, res) => {
     res.json({ name: serverState.worldName || 'world' });
 });
 
+app.post('/api/create-world', async (req, res) => {
+    if (creationStatus.status === 'running') {
+        return res.status(400).json({ error: 'Ya hay una creación de mundo en curso.' });
+    }
+    createWorldFromRequest(req.body || {});
+    res.json({ message: 'OK' });
+});
+
+app.get('/api/creation-status', (req, res) => {
+    res.json(creationStatus);
+});
+
 async function getPlayerLocationFromNbt(playerName) {
     try {
         const serverPath = await getFirstServerPath();
@@ -495,18 +643,34 @@ async function getPlayerLocationFromNbt(playerName) {
         }
 
         let lastDeath = null;
+        let lastDeathDimension = 'minecraft:overworld';
+
         const ld = simple.LastDeathPos || simple.LastDeathLocation;
         if (ld) {
             if (Array.isArray(ld)) {
+                // Formato antiguo: array puro [x, y, z] — sin dimensión guardada
                 lastDeath = { x: Math.floor(toNum(ld[0])), y: Math.floor(toNum(ld[1])), z: Math.floor(toNum(ld[2])) };
             } else if (ld.pos && Array.isArray(ld.pos)) {
+                // Formato 1.17+: { dimension: "minecraft:the_nether", pos: [x, y, z] }
                 lastDeath = { x: Math.floor(toNum(ld.pos[0])), y: Math.floor(toNum(ld.pos[1])), z: Math.floor(toNum(ld.pos[2])) };
+                if (ld.dimension) {
+                    const dimRaw = toStr(ld.dimension).toLowerCase();
+                    if (dimRaw.includes('nether')) lastDeathDimension = 'minecraft:the_nether';
+                    else if (dimRaw.includes('end')) lastDeathDimension = 'minecraft:the_end';
+                    else lastDeathDimension = toStr(ld.dimension);
+                }
             } else if (ld.X !== undefined || ld.x !== undefined) {
                 lastDeath = { x: Math.floor(toNum(ld.X ?? ld.x)), y: Math.floor(toNum(ld.Y ?? ld.y)), z: Math.floor(toNum(ld.Z ?? ld.z)) };
+                if (ld.dimension) {
+                    const dimRaw = toStr(ld.dimension).toLowerCase();
+                    if (dimRaw.includes('nether')) lastDeathDimension = 'minecraft:the_nether';
+                    else if (dimRaw.includes('end')) lastDeathDimension = 'minecraft:the_end';
+                    else lastDeathDimension = toStr(ld.dimension);
+                }
             }
         }
         
-        return { location, dimension, spawn, lastDeath };
+        return { location, dimension, spawn, lastDeath, lastDeathDimension };
     } catch (e) { 
         return { location: {x:0,y:0,z:0}, dimension: 'minecraft:overworld' }; 
     }

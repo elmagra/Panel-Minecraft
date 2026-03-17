@@ -151,8 +151,24 @@ async function initPlayerProfile(force = false) {
   window.handleBanUuid = (el) => { if (el.checked) sendBanUuid(player.name, el, true); else sendPardonUuid(player.name, el, false); };
   
   window.handleGamemode = (val) => sendPlayerCommand(player.name, `gamemode ${val.toLowerCase()} ${player.name}`);
-  window.tpToSpawn = (x, y, z) => sendPlayerCommand(player.name, `tp ${player.name} ${x} ${y} ${z}`);
-  window.tpToLastDeath = (x, y, z) => sendPlayerCommand(player.name, `tp ${player.name} ${x} ${y} ${z}`);
+
+  // Spawn siempre está en el Overworld (el NBT SpawnX/Y/Z es siempre overworld)
+  window.tpToSpawn = (x, y, z) => {
+    const name = player.name;
+    sendPlayerCommand(name, `execute in minecraft:overworld run tp ${name} ${x} ${y} ${z}`);
+  };
+
+  // TP a la última muerte — respeta la dimensión donde murió
+  window.tpToLastDeath = (x, y, z, dim) => {
+    const name = player.name;
+    const dimension = dim || 'minecraft:overworld';
+    if (dimension === 'minecraft:overworld') {
+      sendPlayerCommand(name, `tp ${name} ${x} ${y} ${z}`);
+    } else {
+      sendPlayerCommand(name, `execute in ${dimension} run tp ${name} ${x} ${y} ${z}`);
+    }
+  };
+
   window.tpToPlayer = (targetName) => { if (targetName) sendPlayerCommand(player.name, `tp ${player.name} ${targetName}`); };
   window.playerKick = () => sendPlayerCommand(player.name, `kick ${player.name} Expulsado`);
   window.playerKill = () => sendPlayerCommand(player.name, `kill ${player.name}`);
@@ -160,6 +176,7 @@ async function initPlayerProfile(force = false) {
   let currentLocation = player.location || { x: 0, y: 0, z: 0 };
   let spawn = { x: 0, y: 0, z: 0 };
   let lastDeath = null;
+  let lastDeathDimension = 'minecraft:overworld';
   let hasSpawn = false;
   let otherPlayers = [];
   try {
@@ -168,6 +185,7 @@ async function initPlayerProfile(force = false) {
     player.dimension = locRes.dimension || player.dimension;
     spawn = locRes.spawn || spawn;
     lastDeath = locRes.lastDeath || null;
+    lastDeathDimension = locRes.lastDeathDimension || 'minecraft:overworld';
     hasSpawn = spawn && (spawn.x !== 0 || spawn.y !== 0 || spawn.z !== 0);
     const statusRes = await fetch('/api/server/status').then(r => r.json()).catch(() => ({}));
     otherPlayers = (statusRes.players || []).filter(p => p.name && p.name.toLowerCase() !== player.name.toLowerCase());
@@ -282,7 +300,7 @@ async function initPlayerProfile(force = false) {
                     <button class='btn warning' style="justify-content: center; font-size: 13px; height: 42px; border-radius: 12px;" onclick="tpToSpawn(${spawn.x}, ${spawn.y}, ${spawn.z})" ${!hasSpawn ? 'disabled' : ''}>
                         <i class="fa-solid fa-house"></i> TP Spawn
                     </button>
-                    <button class='btn info' style="justify-content: center; background: #0ea5e9; color: white; border: none; font-size: 13px; height: 42px; border-radius: 12px;" onclick="tpToLastDeath(${lastDeath.x}, ${lastDeath.y}, ${lastDeath.z})" ${!lastDeath ? 'disabled' : ''}>
+                    <button class='btn info' style="justify-content: center; background: #0ea5e9; color: white; border: none; font-size: 13px; height: 42px; border-radius: 12px;" onclick="tpToLastDeath(${lastDeath ? lastDeath.x : 0}, ${lastDeath ? lastDeath.y : 0}, ${lastDeath ? lastDeath.z : 0}, '${lastDeathDimension}')" ${!lastDeath ? 'disabled' : ''}>
                         <i class="fa-solid fa-skull"></i> TP Muerte
                     </button>
                 </div>

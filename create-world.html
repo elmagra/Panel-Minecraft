@@ -209,9 +209,9 @@
 
             <div class="field-row">
               <div class="field-label-row">
-                <label for="level-seed">Semilla (Seed)</label>
+                <label for="level-seed">Semilla (Seed) &mdash; <small style="color:#64748b">vacío = aleatoria</small></label>
               </div>
-              <input type="text" id="level-seed" placeholder="seed" />
+              <input type="text" id="level-seed" placeholder="Dejar vacío para semilla aleatoria" />
             </div>
 
             <div class="field-row">
@@ -219,8 +219,11 @@
                 <label for="level-type">Tipo de nivel</label>
               </div>
               <select id="level-type">
-                <option value="default" selected>default</option>
-                <option value="flat">flat</option>
+                <option value="default" selected>🌍 default — Normal</option>
+                <option value="flat">🟩 flat — Mundo plano</option>
+                <option value="large_biomes">🌲 large_biomes — Biomas grandes</option>
+                <option value="amplified">⛰️ amplified — Amplificado</option>
+                <option value="single_biome_surface">🏜️ single_biome_surface — Un solo bioma</option>
               </select>
             </div>
 
