@@ -1,0 +1,26 @@
+[22:40:35] [ServerMain/INFO]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[22:40:37] [ServerMain/INFO]: Loaded 1175 recipes
+[22:40:37] [ServerMain/INFO]: Loaded 1276 advancements
+[22:40:38] [Server thread/INFO]: Starting minecraft server version 1.20.6
+[22:40:38] [Server thread/INFO]: Loading properties
+[22:40:38] [Server thread/INFO]: Default game type: SURVIVAL
+[22:40:38] [Server thread/INFO]: Generating keypair
+[22:40:38] [Server thread/INFO]: Starting Minecraft server on *:25565
+[22:40:38] [Server thread/INFO]: Using default channel type
+[22:40:38] [Server thread/INFO]: Preparing level "nuevoworld"
+[22:40:40] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
+[22:40:41] [Worker-Main-4/INFO]: Preparing spawn area: 0%
+[22:40:41] [Worker-Main-3/INFO]: Preparing spawn area: 0%
+[22:40:41] [Worker-Main-6/INFO]: Preparing spawn area: 0%
+[22:40:41] [Worker-Main-1/INFO]: Preparing spawn area: 0%
+[22:40:41] [Server thread/INFO]: Time elapsed: 1672 ms
+[22:40:41] [Server thread/INFO]: Done (3.212s)! For help, type "help"
+[22:41:14] [User Authenticator #1/INFO]: UUID of player elmagra is 72ed8263-91da-415d-84d6-2b2635c1c1b4
+[22:41:15] [Server thread/INFO]: elmagra[/192.168.1.200:59361] logged in with entity id 16 at (99.28222688175549, 51.622763759577104, 1.6706805676589334)
+[22:41:15] [Server thread/INFO]: elmagra joined the game
+[22:41:22] [Server thread/INFO]: [elmagra: Set spawn point to 89, 51, -10 [0.0] in minecraft:the_end for elmagra]
+[22:41:28] [Server thread/INFO]: [elmagra: Saved the game]
+[22:41:35] [Server thread/INFO]: Teleported elmagra to 89.500000, 51.000000, -9.500000
+[22:41:55] [Server thread/INFO]: [elmagra: Saved the game]
+[22:42:02] [Server thread/INFO]: Teleported elmagra to 102.500000, 52.000000, 19.500000
+[22:42:03] [Server thread/INFO]: Teleported elmagra to 89.500000, 51.000000, -9.500000

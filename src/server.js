@@ -636,10 +636,33 @@ async function getPlayerLocationFromNbt(playerName) {
         }
 
         const spawn = { x: 0, y: 0, z: 0 };
+        let spawnDimension = 'minecraft:overworld';
         if (simple.SpawnX != null) {
             spawn.x = toNum(simple.SpawnX);
             spawn.y = toNum(simple.SpawnY ?? 0);
             spawn.z = toNum(simple.SpawnZ ?? 0);
+
+            // Buscar SpawnDimension: primero en el NBT simplificado, luego en el raw (parsed.value)
+            // prismarine-nbt a veces no simplifica correctamente ciertos TAG_String compuestos
+            const rawParsedValue = (parsed && parsed.value) ? parsed.value : {};
+            const sdSimple = simple.SpawnDimension;
+            const sdRaw = rawParsedValue.SpawnDimension;
+
+            let sdFound = null;
+            if (sdSimple != null) {
+                sdFound = toStr(sdSimple);
+            } else if (sdRaw != null) {
+                sdFound = toStr(sdRaw);
+            }
+
+            console.log(`[NBT] ${playerName} SpawnX/Y/Z=${spawn.x}/${spawn.y}/${spawn.z} | SpawnDimension(simple)=${sdSimple} | SpawnDimension(raw)=${JSON.stringify(sdRaw)} | resolved=${sdFound}`);
+
+            if (sdFound != null) {
+                const sd = sdFound.toLowerCase();
+                if (sd.includes('nether')) spawnDimension = 'minecraft:the_nether';
+                else if (sd.includes('end')) spawnDimension = 'minecraft:the_end';
+                else spawnDimension = sdFound;
+            }
         }
 
         let lastDeath = null;
@@ -670,7 +693,7 @@ async function getPlayerLocationFromNbt(playerName) {
             }
         }
         
-        return { location, dimension, spawn, lastDeath, lastDeathDimension };
+        return { location, dimension, spawn, spawnDimension, lastDeath, lastDeathDimension };
     } catch (e) { 
         return { location: {x:0,y:0,z:0}, dimension: 'minecraft:overworld' }; 
     }
