@@ -39,6 +39,7 @@ const propMapping = { 'whitelist': 'white-list' };
 
 // Mapa nombre -> IP para saber quién está baneado por IP (Minecraft no guarda nombre en banned-ips.json)
 let banIpByName = {};
+let gameruleCache = {}; // Cache para gamerules sent via command but maybe not yet in level.dat
 
 const BAN_IP_CACHE_FILENAME = 'ban-ip-cache.json';
 const PLAYER_LAST_IP_FILENAME = 'player-last-ip.json';
@@ -97,6 +98,7 @@ function addCreationStep(msg) {
 }
 
 async function createWorldFromRequest(payload) {
+    gameruleCache = {}; // Reset cache for new world
     try {
         const type = (payload.type || 'Vanilla').toString();
         const version = (payload.version || '1.20.1').toString();
@@ -549,6 +551,43 @@ app.get('/api/server/status', (req, res) => {
     res.json(data);
 });
 
+app.get('/api/server/gamerules', async (req, res) => {
+    try {
+        const serverPath = await getFirstServerPath();
+        if (!serverPath) return res.status(404).json({ error: 'Servidor no encontrado' });
+        
+        if (serverState.worldName === 'Cargando...') await loadWorldName();
+        const worldName = serverState.worldName || 'world';
+        
+        const possiblePaths = [
+            path.join(serverPath, worldName, 'level.dat'),
+            path.join(serverPath, 'world', 'level.dat')
+        ];
+        
+        let levelDatPath = null;
+        for (const p of possiblePaths) {
+            if (await fs.pathExists(p)) {
+                levelDatPath = p;
+                break;
+            }
+        }
+        
+        if (!levelDatPath) return res.status(404).json({ error: 'level.dat no encontrado' });
+        
+        const buf = await fs.readFile(levelDatPath);
+        const { parsed } = await nbt.parse(buf);
+        const simple = nbt.simplify(parsed);
+        
+        let fileRules = (simple && simple.Data && simple.Data.GameRules) ? simple.Data.GameRules : {};
+        
+        // Merge with cache (cache takes priority as it's the most recent state)
+        const finalRules = { ...fileRules, ...gameruleCache };
+        res.json(finalRules);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/api/current-server', (req, res) => {
     res.json({ name: serverState.worldName || 'world' });
 });
@@ -655,7 +694,6 @@ async function getPlayerLocationFromNbt(playerName) {
                 sdFound = toStr(sdRaw);
             }
 
-            console.log(`[NBT] ${playerName} SpawnX/Y/Z=${spawn.x}/${spawn.y}/${spawn.z} | SpawnDimension(simple)=${sdSimple} | SpawnDimension(raw)=${JSON.stringify(sdRaw)} | resolved=${sdFound}`);
 
             if (sdFound != null) {
                 const sd = sdFound.toLowerCase();
@@ -726,7 +764,17 @@ app.post('/api/server/start', async (req, res) => {
         const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
         serverState.logs = [];
         serverState.status = 'starting';
-        mcProcess = spawn('java', ['-Xmx2G', '-jar', 'server.jar', 'nogui'], { cwd: serverPath, shell: false });
+        mcProcess = spawn(config.JAVA_PATH, ['-Xmx2G', '-jar', 'server.jar', 'nogui'], { cwd: serverPath, shell: false });
+        
+        // Manejador de errores para evitar que el servidor se caiga si no se encuentra Java
+        mcProcess.on('error', (err) => {
+            console.error('Error al iniciar el proceso de Minecraft:', err);
+            addLog(`¡ERROR CRÍTICO! No se pudo iniciar el servidor: ${err.message}`);
+            if (err.code === 'ENOENT') {
+                addLog('Asegúrate de tener Java instalado y en el PATH, o configura la ruta en config.js');
+            }
+            serverState.status = 'offline';
+        });
         mcProcess.stdout.on('data', data => {
             data.toString().split('\n').forEach(line => {
                 if (line.trim()) {
@@ -774,7 +822,16 @@ app.post('/api/server/restart', async (req, res) => {
         const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
         serverState.logs = [];
         serverState.status = 'starting';
-        mcProcess = spawn('java', ['-Xmx2G', '-jar', 'server.jar', 'nogui'], { cwd: serverPath, shell: false });
+        mcProcess = spawn(config.JAVA_PATH, ['-Xmx2G', '-jar', 'server.jar', 'nogui'], { cwd: serverPath, shell: false });
+        
+        mcProcess.on('error', (err) => {
+            console.error('Error al iniciar el proceso de Minecraft (RESTART):', err);
+            addLog(`¡ERROR CRÍTICO! No se pudo iniciar el servidor tras el reinicio: ${err.message}`);
+            if (err.code === 'ENOENT') {
+                addLog('Asegúrate de tener Java instalado y en el PATH, o configura la ruta en config.js');
+            }
+            serverState.status = 'offline';
+        });
         mcProcess.stdout.on('data', data => {
             data.toString().split('\n').forEach(line => {
                 if (line.trim()) {
@@ -1026,9 +1083,24 @@ app.post('/api/server/command', async (req, res) => {
                 if (await handleList(['op', 'deop'], 'op', 'deop', 'ops.json')) return;
             }
 
+            if (command.startsWith('gamerule ')) {
+                const parts = command.split(' ');
+                if (parts.length >= 3) {
+                    gameruleCache[parts[1]] = parts[2];
+                    return res.json({ message: 'OK (Cache actualizado offline)' });
+                }
+            }
+
             return res.status(400).json({ error: 'Apagado' });
         } catch(e) {
             return res.status(500).json({ error: e.message });
+        }
+    }
+
+    if (command.startsWith('gamerule ')) {
+        const parts = command.split(' ');
+        if (parts.length >= 3) {
+            gameruleCache[parts[1]] = parts[2];
         }
     }
 

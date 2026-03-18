@@ -28,13 +28,25 @@ async function updateGlobalStatus() {
             dot.className = "status-dot";
             if (data.status === 'online') {
                 dot.classList.add("dot-online");
+                if (dot.style) dot.style.background = "#22c55e"; // En caso de que se use el style inline de index
                 text.textContent = "En línea";
+                if ($g("globalStartBtn")) $g("globalStartBtn").style.display = "none";
+                if ($g("globalStopBtn")) $g("globalStopBtn").style.display = "inline-block";
+                if ($g("globalRestartBtn")) $g("globalRestartBtn").style.display = "inline-block";
             } else if (data.status === 'starting') {
                 dot.classList.add("dot-starting");
+                if (dot.style) dot.style.background = "#eab308";
                 text.textContent = "Iniciando...";
+                if ($g("globalStartBtn")) $g("globalStartBtn").style.display = "none";
+                if ($g("globalStopBtn")) $g("globalStopBtn").style.display = "none";
+                if ($g("globalRestartBtn")) $g("globalRestartBtn").style.display = "none";
             } else {
                 dot.classList.add("dot-offline");
+                if (dot.style) dot.style.background = "#ef4444";
                 text.textContent = "Apagado";
+                if ($g("globalStartBtn")) $g("globalStartBtn").style.display = "inline-block";
+                if ($g("globalStopBtn")) $g("globalStopBtn").style.display = "none";
+                if ($g("globalRestartBtn")) $g("globalRestartBtn").style.display = "none";
             }
         }
     } catch(e) {}

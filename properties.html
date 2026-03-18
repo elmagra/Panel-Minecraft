@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MC Host - Propiedades</title>
+  <link rel="icon" type="image/png" href="resources/icono.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/layout.css" />
@@ -45,6 +46,29 @@
       opacity: 0.7;
       cursor: not-allowed;
     }
+
+    /* toast */
+    #grToast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e3058;
+      border: 1px solid #3b82f6;
+      color: #e2e8f0;
+      padding: 12px 22px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 8px 30px rgba(0,0,0,.5);
+      opacity: 0;
+      transition: opacity .3s, transform .3s;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    #grToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #grToast.toast-ok  { background: #14532d; border-color: #22c55e; color: #bbf7d0; }
+    #grToast.toast-err { background: #450a0a; border-color: #ef4444; color: #fecaca; }
   </style>
 </head>
 <body>
@@ -56,6 +80,7 @@
         <a class="nav-link" href="players.html"><i class="fa-solid fa-users"></i> Jugadores</a>
         <a class="nav-link" href="files.html"><i class="fa-solid fa-folder-open"></i> Archivos</a>
         <a class="nav-link active" href="properties.html"><i class="fa-solid fa-sliders"></i> Propiedades</a>
+        <a class="nav-link" href="gamerules.html"><i class="fa-solid fa-scroll"></i> Gamerules</a>
         <a class="nav-link" href="create-world.html"><i class="fa-solid fa-plus"></i> Crear Mundo</a>
       </nav>
     </aside>
@@ -66,15 +91,15 @@
           <h2>Propiedades del servidor</h2>
           <p class="small-text">Configuración general</p>
         </div>
-        <div class="topbar-controls">
+        <div class="topbar-controls" style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255,255,255,0.05); padding: 10px 20px; border-radius: 20px;">
           <div class="topbar-status">
-            <span class="status-dot dot-offline" id="globalStatusDot"></span>
-            <span class="topbar-status-text" id="globalStatusText">Apagado</span>
+            <div class="status-dot dot-offline" id="globalStatusDot" style="width: 12px; height: 12px;"></div>
+            <span class="topbar-status-text" id="globalStatusText" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; font-weight: 800;">Apagado</span>
           </div>
-          <div class="topbar-actions">
-            <button class="btn success btn-top" id="globalStartBtn" title="Encender">▶</button>
-            <button class="btn danger btn-top" id="globalStopBtn" title="Apagar">■</button>
-            <button class="btn warning btn-top" id="globalRestartBtn" title="Reiniciar">↻</button>
+          <div class="topbar-actions" style="margin-left: 10px;">
+            <button class="btn success" id="globalStartBtn" style="padding: 10px 18px; border-radius: 14px; box-shadow: 0 4px 15px -5px rgba(34, 197, 94, 0.4);"><i class="fa-solid fa-play"></i> INICIAR</button>
+            <button class="btn secondary" id="globalRestartBtn" style="padding: 10px 18px; border-radius: 14px;"><i class="fa-solid fa-rotate"></i></button>
+            <button class="btn danger" id="globalStopBtn" style="padding: 10px 18px; border-radius: 14px; box-shadow: 0 4px 15px -5px rgba(239, 68, 68, 0.4);"><i class="fa-solid fa-stop"></i></button>
           </div>
         </div>
       </header>
@@ -99,14 +124,14 @@
                 <label for="view-distance">view-distance</label>
                 <span class="help-badge" data-tip="Determina el radio de carga de chunks alrededor de los jugadores.">?</span>
               </div>
-              <input type="number" id="view-distance" placeholder="10" />
+              <input type="number" id="view-distance" placeholder="10" min="0" max="32" />
             </div>
             <div class="field-row">
               <div class="field-label-row">
                 <label for="simulation-distance">simulation-distance</label>
                 <span class="help-badge" data-tip="Distancia en la que ocurren eventos como crecimiento de cultivos o movimiento de mobs.">?</span>
               </div>
-              <input type="number" id="simulation-distance" placeholder="10" />
+              <input type="number" id="simulation-distance" placeholder="10" min="0" max="32" />
             </div>
             <div class="field-row">
               <div class="field-label-row">
@@ -283,6 +308,8 @@
     </main>
   </div>
 
+  <div id="grToast"></div>
+
   <script src="js/data.js"></script>
   <script src="js/global-controls.js"></script>
   <script src="js/app.js"></script>
@@ -290,6 +317,15 @@
     (function() {
       const saveBtn = document.getElementById('saveRestartBtn');
       const allFields = document.querySelectorAll('input, select');
+      
+      const showToast = (msg, type = 'ok') => {
+        const t = document.getElementById('grToast');
+        t.textContent = msg;
+        t.className = `show toast-${type}`;
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => { t.className = ''; }, 3000);
+      };
+
       const loadProperties = async () => {
         try {
           const res = await fetch('/api/server/properties');
@@ -305,6 +341,17 @@
         } catch (e) { console.error("Error loading properties:", e); }
       };
       const saveProperties = async () => {
+        // Validation for min/max
+        for (let field of allFields) {
+          if (field.type === 'number') {
+            const n = parseInt(field.value);
+            const min = field.getAttribute('min');
+            const max = field.getAttribute('max');
+            if (min !== null && n < parseInt(min)) { showToast(`Error en ${field.id}: mínimo ${min}`, 'err'); return; }
+            if (max !== null && n > parseInt(max)) { showToast(`Error en ${field.id}: máximo ${max}`, 'err'); return; }
+          }
+        }
+
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span>⏳</span> Guardando...';
         const props = {};
@@ -319,11 +366,16 @@
           await fetch('/api/server/stop', { method: 'POST' });
           setTimeout(() => fetch('/api/server/start', { method: 'POST' }), 2000);
           saveBtn.innerHTML = '<span>✅</span> ¡Guardado!';
+          showToast('✅ Cambios guardados. El servidor se está reiniciando...', 'ok');
           setTimeout(() => {
              saveBtn.disabled = false;
              saveBtn.innerHTML = '<span>💾</span> Guardar y reiniciar';
           }, 2000);
-        } catch (e) { saveBtn.innerHTML = '<span>❌</span> Error'; saveBtn.disabled = false; }
+        } catch (e) { 
+          saveBtn.innerHTML = '<span>❌</span> Error'; 
+          saveBtn.disabled = false; 
+          showToast('❌ Ocurrió un error al guardar', 'err');
+        }
       };
       let initialValues = {};
       const capture = () => { allFields.forEach(f => { if (f.id) initialValues[f.id] = f.type==='checkbox' ? f.checked : f.value; }); };
