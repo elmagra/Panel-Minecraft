@@ -65,12 +65,21 @@ async function updateStatus() {
         if (data.status === 'online') {
             if (statusText) statusText.textContent = "En línea";
             if (dot) dot.style.background = "#22c55e";
+            if ($("startBtn")) $("startBtn").style.display = "none";
+            if ($("stopBtn")) $("stopBtn").style.display = "inline-block";
+            if ($("restartBtn")) $("restartBtn").style.display = "inline-block";
         } else if (data.status === 'starting') {
             if (statusText) statusText.textContent = "Iniciando...";
             if (dot) dot.style.background = "#eab308";
+            if ($("startBtn")) $("startBtn").style.display = "none";
+            if ($("stopBtn")) $("stopBtn").style.display = "none";
+            if ($("restartBtn")) $("restartBtn").style.display = "none";
         } else {
             if (statusText) statusText.textContent = "Apagado";
             if (dot) dot.style.background = "#ef4444";
+            if ($("startBtn")) $("startBtn").style.display = "inline-block";
+            if ($("stopBtn")) $("stopBtn").style.display = "none";
+            if ($("restartBtn")) $("restartBtn").style.display = "none";
         }
 
         // Stats & Version
