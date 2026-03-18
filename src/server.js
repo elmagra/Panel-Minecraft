@@ -725,7 +725,17 @@ app.post('/api/server/start', async (req, res) => {
         const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
         serverState.logs = [];
         serverState.status = 'starting';
-        mcProcess = spawn('java', ['-Xmx2G', '-jar', 'server.jar', 'nogui'], { cwd: serverPath, shell: false });
+        mcProcess = spawn(config.JAVA_PATH, ['-Xmx2G', '-jar', 'server.jar', 'nogui'], { cwd: serverPath, shell: false });
+        
+        // Manejador de errores para evitar que el servidor se caiga si no se encuentra Java
+        mcProcess.on('error', (err) => {
+            console.error('Error al iniciar el proceso de Minecraft:', err);
+            addLog(`¡ERROR CRÍTICO! No se pudo iniciar el servidor: ${err.message}`);
+            if (err.code === 'ENOENT') {
+                addLog('Asegúrate de tener Java instalado y en el PATH, o configura la ruta en config.js');
+            }
+            serverState.status = 'offline';
+        });
         mcProcess.stdout.on('data', data => {
             data.toString().split('\n').forEach(line => {
                 if (line.trim()) {
@@ -773,7 +783,16 @@ app.post('/api/server/restart', async (req, res) => {
         const serverPath = path.join(config.SERVERS_ROOT, folders[0]);
         serverState.logs = [];
         serverState.status = 'starting';
-        mcProcess = spawn('java', ['-Xmx2G', '-jar', 'server.jar', 'nogui'], { cwd: serverPath, shell: false });
+        mcProcess = spawn(config.JAVA_PATH, ['-Xmx2G', '-jar', 'server.jar', 'nogui'], { cwd: serverPath, shell: false });
+        
+        mcProcess.on('error', (err) => {
+            console.error('Error al iniciar el proceso de Minecraft (RESTART):', err);
+            addLog(`¡ERROR CRÍTICO! No se pudo iniciar el servidor tras el reinicio: ${err.message}`);
+            if (err.code === 'ENOENT') {
+                addLog('Asegúrate de tener Java instalado y en el PATH, o configura la ruta en config.js');
+            }
+            serverState.status = 'offline';
+        });
         mcProcess.stdout.on('data', data => {
             data.toString().split('\n').forEach(line => {
                 if (line.trim()) {
