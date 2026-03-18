@@ -655,7 +655,6 @@ async function getPlayerLocationFromNbt(playerName) {
                 sdFound = toStr(sdRaw);
             }
 
-            console.log(`[NBT] ${playerName} SpawnX/Y/Z=${spawn.x}/${spawn.y}/${spawn.z} | SpawnDimension(simple)=${sdSimple} | SpawnDimension(raw)=${JSON.stringify(sdRaw)} | resolved=${sdFound}`);
 
             if (sdFound != null) {
                 const sd = sdFound.toLowerCase();
